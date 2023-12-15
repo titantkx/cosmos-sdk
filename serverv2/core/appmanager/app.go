@@ -63,5 +63,5 @@ type TxResult struct {
 	GasUsed   int64
 	Log       string
 	Data      string
-	Events    event.Event
+	Events    []event.Event
 }

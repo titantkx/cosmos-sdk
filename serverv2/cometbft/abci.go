@@ -11,7 +11,12 @@ import (
 	"cosmossdk.io/store/snapshots"
 	snapshottypes "cosmossdk.io/store/snapshots/types"
 	abci "github.com/cometbft/cometbft/abci/types"
+	cmtprotocrypto "github.com/cometbft/cometbft/proto/tendermint/crypto"
+	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/cosmos/cosmos-sdk/serverv2/cometbft/types"
+	"github.com/cosmos/cosmos-sdk/serverv2/core/appmanager"
+	"github.com/cosmos/cosmos-sdk/serverv2/core/transaction"
+	"github.com/cosmos/cosmos-sdk/serverv2/core/validator"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	"github.com/cosmos/gogoproto/proto"
 )
@@ -20,10 +25,12 @@ var _ abci.Application = (*cometABCIWrapper)(nil)
 
 var QueryPathBroadcastTx = "/cosmos.tx.v1beta1.Service/BroadcastTx"
 
-type cometABCIWrapper struct {
-	app    types.ProtoApp
-	logger log.Logger
-	trace  bool
+type cometABCIWrapper[T transaction.Tx] struct {
+	app       appmanager.App[T]
+	logger    log.Logger
+	trace     bool
+	validator transaction.Validator[T]
+	txCodec   transaction.Codec[T]
 
 	proposalHandler types.ProposalHandler
 	voteExtHandler  types.VoteExtensionsHandler
@@ -32,87 +39,144 @@ type cometABCIWrapper struct {
 	snapshotManager *snapshots.Manager
 }
 
-func NewCometABCIWrapper(app types.ProtoApp, logger log.Logger, proposalHandler types.ProposalHandler, voteExtHandler types.VoteExtensionsHandler, debug bool) abci.Application {
-	return &cometABCIWrapper{app: app, logger: logger, trace: debug}
+func NewCometABCIWrapper[T transaction.Tx](app appmanager.App[T], logger log.Logger, proposalHandler types.ProposalHandler, voteExtHandler types.VoteExtensionsHandler, debug bool) abci.Application {
+	return &cometABCIWrapper[T]{app: app, logger: logger, trace: debug}
 }
 
-func (w *cometABCIWrapper) Info(_ context.Context, req *abci.RequestInfo) (*abci.ResponseInfo, error) {
+func (w *cometABCIWrapper[T]) Info(_ context.Context, req *abci.RequestInfo) (*abci.ResponseInfo, error) {
 	appVersion, err := w.app.AppVersion() // avoid the QueryContext given that we are always returning the latest here
 	if err != nil {
 		return nil, fmt.Errorf("failed getting app version: %w", err)
 	}
 
+	// TODO: version string?
+	versionStr := fmt.Sprintf("%s@%s", w.app.ChainID(), appVersion)
+
 	return &abci.ResponseInfo{
-		Data:             w.app.Name(),
-		Version:          w.app.Version(),
+		Data:             w.app.ChainID(),
+		Version:          versionStr,
 		AppVersion:       appVersion,
-		LastBlockHeight:  w.app.LastBlockHeight(),
-		LastBlockAppHash: w.app.AppHash(),
+		LastBlockHeight:  1,        // TODO: missing w.app.LastBlockHeight(),
+		LastBlockAppHash: []byte{}, // TODO: missing w.app.AppHash(),
 	}, nil
 }
 
-func (w *cometABCIWrapper) Query(ctx context.Context, req *abci.RequestQuery) (*abci.ResponseQuery, error) {
+func (w *cometABCIWrapper[T]) Query(ctx context.Context, req *abci.RequestQuery) (*abci.ResponseQuery, error) {
 	// reject special cases
 	if req.Path == QueryPathBroadcastTx {
 		return sdkerrors.QueryResult(errorsmod.Wrap(sdkerrors.ErrInvalidRequest, "can't route a broadcast tx message"), w.trace), nil
 	}
 
-	return w.app.Query(*req)
-}
-
-func (w *cometABCIWrapper) CheckTx(_ context.Context, req *abci.RequestCheckTx) (*abci.ResponseCheckTx, error) {
-	gInfo, result, anteEvents, err := w.app.ValidateTX(req.Tx)
-	if err != nil {
-		return sdkerrors.ResponseCheckTxWithEvents(err, gInfo.GasWanted, gInfo.GasUsed, anteEvents, w.trace), nil
+	qReq := &appmanager.QueryRequest{
+		Height: req.Height,
+		Path:   req.Path,
+		Data:   req.Data,
 	}
 
-	return &abci.ResponseCheckTx{
-		GasWanted: int64(gInfo.GasWanted),
-		GasUsed:   int64(gInfo.GasUsed),
-		Log:       result.Log,
-		Data:      result.Data,
-		Events:    result.Events, // TODO: this event handling should be done on cometbft's package
+	res, err := w.app.Query(ctx, qReq)
+	if err != nil {
+		return nil, err
+	}
+	return &abci.ResponseQuery{
+		Code:  0,
+		Value: res.Value,
+		// Proof:  res.Proof, // TODO: no proof?
+		Height: res.Height,
 	}, nil
 }
 
-func (w *cometABCIWrapper) InitChain(_ context.Context, req *abci.RequestInitChain) (*abci.ResponseInitChain, error) {
-	rr := types.RequestInitChain{
-		StateBytes: req.AppStateBytes,
-	}
-
-	_, err := w.app.InitChain(rr)
+func (w *cometABCIWrapper[T]) CheckTx(ctx context.Context, req *abci.RequestCheckTx) (*abci.ResponseCheckTx, error) {
+	tx, err := w.txCodec.Decode(req.Tx)
 	if err != nil {
 		return nil, err
 	}
 
-	vals := w.app.Validators()
+	ctx, errMap := w.validator.Validate(ctx, []T{tx})
+
+	errs := []error{}
+	for hash, err := range errMap {
+		errs = append(errs, fmt.Errorf("tx with hash %X failed validation with error: %w", hash, err))
+	}
+	if len(errs) != 0 {
+		// TODO: gas info here is necessary? And ante handlers events?
+		return sdkerrors.ResponseCheckTxWithEvents(errors.Join(errs...), 0, 0, nil, w.trace), nil
+	}
+
+	// TODO: wat?
+	return &abci.ResponseCheckTx{
+		// GasWanted: int64(gInfo.GasWanted),
+		// GasUsed:   int64(gInfo.GasUsed),
+		// Log:       result.Log,
+		// Data:      result.Data,
+		// Events:    result.Events, // TODO: this event handling should be done on cometbft's package
+	}, nil
+}
+
+func (w *cometABCIWrapper[T]) InitChain(ctx context.Context, req *abci.RequestInitChain) (*abci.ResponseInitChain, error) {
+	valUpdates := []validator.Update{}
+	for _, v := range req.Validators {
+		pubkey, err := cryptocdc.FromCmtProtoPublicKey(v.PubKey)
+		if err != nil {
+			return nil, err
+		}
+
+		valUpdates = append(valUpdates, validator.Update{
+			PubKey: pubkey.Bytes(),
+			Power:  v.Power,
+		})
+	}
+
+	rr := appmanager.RequestInitChain{
+		Time:          req.Time,
+		ChainId:       req.ChainId,
+		AppStateBytes: req.AppStateBytes,
+		InitialHeight: req.InitialHeight,
+		Validators:    valUpdates,
+	}
+
+	res, err := w.app.InitChain(ctx, rr)
+	if err != nil {
+		return nil, err
+	}
+
+	abciVals := make(abci.ValidatorUpdates, len(res.Validators))
+	for i, update := range res.Validators {
+		abciVals[i] = abci.ValidatorUpdate{
+			PubKey: cmtprotocrypto.PublicKey{
+				Sum: &cmtprotocrypto.PublicKey_Ed25519{
+					Ed25519: update.PubKey,
+				},
+			},
+			Power: update.Power,
+		}
+	}
 
 	if len(req.Validators) > 0 {
-		if len(req.Validators) != len(vals) {
+		if len(req.Validators) != len(abciVals) {
 			return nil, fmt.Errorf(
 				"len(RequestInitChain.Validators) != len(GenesisValidators) (%d != %d)",
-				len(req.Validators), len(vals),
+				len(req.Validators), len(abciVals),
 			)
 		}
 
 		sort.Sort(abci.ValidatorUpdates(req.Validators))
-		sort.Sort(abci.ValidatorUpdates(vals))
+		sort.Sort(abciVals)
 
-		for i := range vals {
-			if !proto.Equal(&vals[i], &req.Validators[i]) {
+		for i := range abciVals {
+			if !proto.Equal(&abciVals[i], &req.Validators[i]) {
 				return nil, fmt.Errorf("genesisValidators[%d] != req.Validators[%d] ", i, i)
 			}
 		}
 	}
 
 	return &abci.ResponseInitChain{
-		ConsensusParams: w.app.ConsensusParams(),
-		Validators:      vals,
-		AppHash:         w.app.AppHash(),
+		// ConsensusParams: w.app.ConsensusParams(), // TODO: add consensus params
+		Validators: abciVals,
+		AppHash:    res.AppHash,
 	}, nil
 }
 
-func (w *cometABCIWrapper) PrepareProposal(ctx context.Context, req *abci.RequestPrepareProposal) (resp *abci.ResponsePrepareProposal, err error) {
+func (w *cometABCIWrapper[T]) PrepareProposal(ctx context.Context, req *abci.RequestPrepareProposal) (resp *abci.ResponsePrepareProposal, err error) {
 	// do basic validation here
 	if req.Height < 1 {
 		return nil, errors.New("PrepareProposal called with invalid height")
@@ -142,7 +206,7 @@ func (w *cometABCIWrapper) PrepareProposal(ctx context.Context, req *abci.Reques
 	return resp, nil
 }
 
-func (w *cometABCIWrapper) ProcessProposal(ctx context.Context, req *abci.RequestProcessProposal) (resp *abci.ResponseProcessProposal, err error) {
+func (w *cometABCIWrapper[T]) ProcessProposal(ctx context.Context, req *abci.RequestProcessProposal) (resp *abci.ResponseProcessProposal, err error) {
 	// CometBFT must never call ProcessProposal with a height of 0.
 	// Ref: https://github.com/cometbft/cometbft/blob/059798a4f5b0c9f52aa8655fa619054a0154088c/spec/core/state.md?plain=1#L37-L38
 	if req.Height < 1 {
@@ -176,42 +240,125 @@ func (w *cometABCIWrapper) ProcessProposal(ctx context.Context, req *abci.Reques
 	return resp, nil
 }
 
-func (w *cometABCIWrapper) FinalizeBlock(c context.Context, req *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
+func (w *cometABCIWrapper[T]) FinalizeBlock(ctx context.Context, req *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
 	if err := w.validateFinalizeBlockHeight(req); err != nil {
 		return nil, err
 	}
 
-	header := types.CometBFTHeader{
-		Height:             req.Height,
-		Hash:               req.Hash,
-		Time:               req.Time,
-		ChainID:            w.app.ChainID(),
-		AppHash:            w.app.AppHash(),
-		NextValidatorsHash: req.NextValidatorsHash,
-		ProposerAddress:    req.ProposerAddress,
-		LastCommit:         req.DecidedLastCommit,
-		Misbehavior:        req.Misbehavior,
+	// header := types.CometBFTHeader{
+	// 	Height:             req.Height,
+	// 	Hash:               req.Hash,
+	// 	Time:               req.Time,
+	// 	ChainID:            w.app.ChainID(),
+	// 	AppHash:            w.app.AppHash(),
+	// 	NextValidatorsHash: req.NextValidatorsHash,
+	// 	ProposerAddress:    req.ProposerAddress,
+	// 	LastCommit:         req.DecidedLastCommit,
+	// 	Misbehavior:        req.Misbehavior,
+	// }
+
+	txs := make([]T, len(req.Txs))
+	for i, tx := range req.Txs {
+		var err error
+		txs[i], err = w.txCodec.Decode(tx)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	_, err := w.app.DeliverBlock(header, req.Txs)
+	delBlkReq := appmanager.RequestDeliverBlock[T]{
+		Height: req.Height,
+		Time:   req.Time,
+		Hash:   req.Hash,
+		Txs:    txs,
+	}
+
+	delBlkRes, err := w.app.DeliverBlock(ctx, delBlkReq)
 	if err != nil {
 		return nil, err
 	}
 
-	cp := w.app.ConsensusParams()
+	// delBlkRes.
+	// cp := w.app.ConsensusParams()
 
 	// TODO: translate tx results
 
+	// type ResponseDeliverBlock struct {
+	// 	Apphash          []byte
+	// 	ValidatorUpdates []validator.Update
+	// 	TxResults        []TxResult
+	// 	Events           []event.Event
+	// }
+
+	abciVals := make(abci.ValidatorUpdates, len(delBlkRes.ValidatorUpdates))
+	for i, update := range delBlkRes.ValidatorUpdates {
+		abciVals[i] = abci.ValidatorUpdate{
+			PubKey: cmtprotocrypto.PublicKey{
+				Sum: &cmtprotocrypto.PublicKey_Ed25519{
+					Ed25519: update.PubKey,
+				},
+			},
+			Power: update.Power,
+		}
+	}
+
+	abciEvents := make([]abci.Event, len(delBlkRes.Events))
+	for i, event := range delBlkRes.Events {
+		attrs := make([]abci.EventAttribute, len(event.Attributes))
+		for j, attr := range event.Attributes {
+			attrs[j] = abci.EventAttribute{
+				Key:   attr.Key,
+				Value: attr.Value,
+			}
+		}
+
+		abciEvents[i] = abci.Event{
+			Type:       event.Type,
+			Attributes: attrs,
+		}
+	}
+
+	abciTxResults := make([]*abci.ExecTxResult, len(delBlkRes.TxResults))
+	for i, txResult := range delBlkRes.TxResults {
+		// TODO: put this in a helper func
+		abciEvents := make([]abci.Event, len(txResult.Events))
+		for i, event := range txResult.Events {
+			attrs := make([]abci.EventAttribute, len(event.Attributes))
+			for j, attr := range event.Attributes {
+				attrs[j] = abci.EventAttribute{
+					Key:   attr.Key,
+					Value: attr.Value,
+				}
+			}
+
+			abciEvents[i] = abci.Event{
+				Type:       event.Type,
+				Attributes: attrs,
+			}
+		}
+
+		abciTxResults[i] = &abci.ExecTxResult{
+			Code:      0, // TODO: add a status code to ExecTxResult
+			Data:      []byte(txResult.Data),
+			Log:       txResult.Log,
+			Info:      "",
+			GasWanted: txResult.GasWanted,
+			GasUsed:   txResult.GasUsed,
+			Events:    abciEvents,
+			Codespace: "",
+		}
+	}
+
 	return &abci.ResponseFinalizeBlock{
-		// Events: events, // TODO: figure out how DeliverBlock will return tx events and other events (from BeginBlock, EndBlock, etc)
-		// TxResults:             txResults,
-		ValidatorUpdates:      w.app.Validators(),
-		ConsensusParamUpdates: cp,
-		AppHash:               w.app.AppHash(),
+		TxResults:        abciTxResults,
+		ValidatorUpdates: abciVals,
+		Events:           abciEvents,
+		// ConsensusParamUpdates: cp, // TODO: figure out consensus params
+		AppHash: delBlkRes.Apphash,
 	}, nil
 }
 
-func (w *cometABCIWrapper) ExtendVote(ctx context.Context, req *abci.RequestExtendVote) (*abci.ResponseExtendVote, error) {
+func (w *cometABCIWrapper[T]) ExtendVote(ctx context.Context, req *abci.RequestExtendVote) (*abci.ResponseExtendVote, error) {
 	cp, err := w.paramStore.Get(ctx)
 	if err != nil {
 		return nil, err
@@ -248,12 +395,12 @@ func (w *cometABCIWrapper) ExtendVote(ctx context.Context, req *abci.RequestExte
 	return resp, nil
 }
 
-func (w *cometABCIWrapper) VerifyVoteExtension(_ context.Context, req *abci.RequestVerifyVoteExtension) (*abci.ResponseVerifyVoteExtension, error) {
+func (w *cometABCIWrapper[T]) VerifyVoteExtension(_ context.Context, req *abci.RequestVerifyVoteExtension) (*abci.ResponseVerifyVoteExtension, error) {
 	// TODO: do an interface check to see if app implements VerifyVoteExtension
 	return &abci.ResponseVerifyVoteExtension{}, nil
 }
 
-func (w *cometABCIWrapper) Commit(ctx context.Context, _ *abci.RequestCommit) (*abci.ResponseCommit, error) {
+func (w *cometABCIWrapper[T]) Commit(ctx context.Context, _ *abci.RequestCommit) (*abci.ResponseCommit, error) {
 	retainHeight := w.app.GetBlockRetentionHeight(w.app.LastBlockHeight())
 
 	resp := &abci.ResponseCommit{
@@ -272,7 +419,7 @@ func (w *cometABCIWrapper) Commit(ctx context.Context, _ *abci.RequestCommit) (*
 	return resp, nil
 }
 
-func (w *cometABCIWrapper) ListSnapshots(_ context.Context, req *abci.RequestListSnapshots) (*abci.ResponseListSnapshots, error) {
+func (w *cometABCIWrapper[T]) ListSnapshots(_ context.Context, req *abci.RequestListSnapshots) (*abci.ResponseListSnapshots, error) {
 	resp := &abci.ResponseListSnapshots{Snapshots: []*abci.Snapshot{}}
 	if w.snapshotManager == nil {
 		return resp, nil
@@ -297,7 +444,7 @@ func (w *cometABCIWrapper) ListSnapshots(_ context.Context, req *abci.RequestLis
 	return resp, nil
 }
 
-func (w *cometABCIWrapper) OfferSnapshot(_ context.Context, req *abci.RequestOfferSnapshot) (*abci.ResponseOfferSnapshot, error) {
+func (w *cometABCIWrapper[T]) OfferSnapshot(_ context.Context, req *abci.RequestOfferSnapshot) (*abci.ResponseOfferSnapshot, error) {
 	if w.snapshotManager == nil {
 		w.logger.Error("snapshot manager not configured")
 		return &abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_ABORT}, nil
@@ -346,7 +493,7 @@ func (w *cometABCIWrapper) OfferSnapshot(_ context.Context, req *abci.RequestOff
 	}
 }
 
-func (w *cometABCIWrapper) LoadSnapshotChunk(_ context.Context, req *abci.RequestLoadSnapshotChunk) (*abci.ResponseLoadSnapshotChunk, error) {
+func (w *cometABCIWrapper[T]) LoadSnapshotChunk(_ context.Context, req *abci.RequestLoadSnapshotChunk) (*abci.ResponseLoadSnapshotChunk, error) {
 	if w.snapshotManager == nil {
 		return &abci.ResponseLoadSnapshotChunk{}, nil
 	}
@@ -366,7 +513,7 @@ func (w *cometABCIWrapper) LoadSnapshotChunk(_ context.Context, req *abci.Reques
 	return &abci.ResponseLoadSnapshotChunk{Chunk: chunk}, nil
 }
 
-func (w *cometABCIWrapper) ApplySnapshotChunk(_ context.Context, req *abci.RequestApplySnapshotChunk) (*abci.ResponseApplySnapshotChunk, error) {
+func (w *cometABCIWrapper[T]) ApplySnapshotChunk(_ context.Context, req *abci.RequestApplySnapshotChunk) (*abci.ResponseApplySnapshotChunk, error) {
 	if w.snapshotManager == nil {
 		w.logger.Error("snapshot manager not configured")
 		return &abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ABORT}, nil
@@ -396,7 +543,7 @@ func (w *cometABCIWrapper) ApplySnapshotChunk(_ context.Context, req *abci.Reque
 	}
 }
 
-func (w *cometABCIWrapper) validateFinalizeBlockHeight(req *abci.RequestFinalizeBlock) error {
+func (w *cometABCIWrapper[T]) validateFinalizeBlockHeight(req *abci.RequestFinalizeBlock) error {
 	if req.Height < 1 {
 		return fmt.Errorf("invalid height: %d", req.Height)
 	}
