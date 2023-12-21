@@ -323,6 +323,13 @@ func (f Factory) BuildUnsignedTx(msgs ...sdk.Msg) (client.TxBuilder, error) {
 
 		glDec := math.LegacyNewDec(int64(f.gas))
 
+		// If --gas=auto is set and gas=0 (not calculate gas yet) , try to estimate the gas more accurately.
+		// use gas = 1 in order to simulate do not ignore `DeductFees`
+		// ref: https://github.com/cosmos/cosmos-sdk/issues/4864
+		if f.simulateAndExecute && f.gas == 0 {
+			glDec = math.LegacyNewDec(int64(1))
+		}
+
 		// Derive the fees based on the provided gas prices, where
 		// fee = ceil(gasPrice * gasLimit).
 		fees = make(sdk.Coins, len(f.gasPrices))

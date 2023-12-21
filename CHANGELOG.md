@@ -37,6 +37,10 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## [Unreleased]
 
+### Features
+
+* (client/tx) [#4864](https://github.com/cosmos/cosmos-sdk/issues/4864) Improve estimate gas.
+
 ## [v0.47.6](https://github.com/cosmos/cosmos-sdk/releases/tag/v0.47.6) - 2023-11-14
 
 ### Features
