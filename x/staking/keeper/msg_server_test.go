@@ -114,6 +114,55 @@ func (s *KeeperTestSuite) TestMsgUpdateParams() {
 			expErr:    true,
 			expErrMsg: "max entries must be positive",
 		},
+		{
+			name: "global min self delegation must be greater or equal to zero",
+			input: &stakingtypes.MsgUpdateParams{
+				Authority: keeper.GetAuthority(),
+				Params: stakingtypes.Params{
+					MinCommissionRate:       stakingtypes.DefaultMinCommissionRate,
+					UnbondingTime:           stakingtypes.DefaultUnbondingTime,
+					MaxValidators:           stakingtypes.DefaultMaxValidators,
+					MaxEntries:              stakingtypes.DefaultMaxEntries,
+					HistoricalEntries:       stakingtypes.DefaultHistoricalEntries,
+					BondDenom:               stakingtypes.BondStatusBonded,
+					GlobalMinSelfDelegation: math.NewInt(-1),
+				},
+			},
+			expErr:    true,
+			expErrMsg: "global minimum self delegation cannot be negative",
+		},
+		{
+			name: "global min self delegation must be greater or equal to zero",
+			input: &stakingtypes.MsgUpdateParams{
+				Authority: keeper.GetAuthority(),
+				Params: stakingtypes.Params{
+					MinCommissionRate:       stakingtypes.DefaultMinCommissionRate,
+					UnbondingTime:           stakingtypes.DefaultUnbondingTime,
+					MaxValidators:           stakingtypes.DefaultMaxValidators,
+					MaxEntries:              stakingtypes.DefaultMaxEntries,
+					HistoricalEntries:       stakingtypes.DefaultHistoricalEntries,
+					BondDenom:               stakingtypes.BondStatusBonded,
+					GlobalMinSelfDelegation: math.NewInt(0),
+				},
+			},
+			expErr: false,
+		},
+		{
+			name: "global min self delegation must be greater or equal to zero",
+			input: &stakingtypes.MsgUpdateParams{
+				Authority: keeper.GetAuthority(),
+				Params: stakingtypes.Params{
+					MinCommissionRate:       stakingtypes.DefaultMinCommissionRate,
+					UnbondingTime:           stakingtypes.DefaultUnbondingTime,
+					MaxValidators:           stakingtypes.DefaultMaxValidators,
+					MaxEntries:              stakingtypes.DefaultMaxEntries,
+					HistoricalEntries:       stakingtypes.DefaultHistoricalEntries,
+					BondDenom:               stakingtypes.BondStatusBonded,
+					GlobalMinSelfDelegation: math.NewInt(1000),
+				},
+			},
+			expErr: false,
+		},
 	}
 
 	for _, tc := range testCases {
