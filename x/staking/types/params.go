@@ -35,7 +35,7 @@ const (
 // DefaultMinCommissionRate is set to 0%
 var DefaultMinCommissionRate = math.LegacyZeroDec()
 
-var DefaultGlobalMinSelfDelegation = math.NewInt(2048)
+var DefaultGlobalMinSelfDelegation = math.NewInt(0)
 
 // NewParams creates a new Params instance
 func NewParams(unbondingTime time.Duration, maxValidators, maxEntries, historicalEntries uint32, bondDenom string, minCommissionRate sdk.Dec, globalMinSelfDelegation math.Int) Params {
