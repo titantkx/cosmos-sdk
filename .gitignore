@@ -25,6 +25,7 @@ dist
 tools-stamp
 buf-stamp
 artifacts
+proto_mod
 
 # Go
 go.work
