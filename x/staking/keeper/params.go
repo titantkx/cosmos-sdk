@@ -49,6 +49,11 @@ func (k Keeper) MinCommissionRate(ctx sdk.Context) math.LegacyDec {
 	return k.GetParams(ctx).MinCommissionRate
 }
 
+// GlobalMinSelfDelegation - Minimum validator self delegation
+func (k Keeper) GlobalMinSelfDelegation(ctx sdk.Context) math.Int {
+	return k.GetParams(ctx).GlobalMinSelfDelegation
+}
+
 // SetParams sets the x/staking module parameters.
 func (k Keeper) SetParams(ctx sdk.Context, params types.Params) error {
 	if err := params.Validate(); err != nil {

@@ -52,4 +52,7 @@ var (
 	ErrCommissionLTMinRate             = sdkerrors.Register(ModuleName, 40, "commission cannot be less than min rate")
 	ErrUnbondingNotFound               = sdkerrors.Register(ModuleName, 41, "unbonding operation not found")
 	ErrUnbondingOnHoldRefCountNegative = sdkerrors.Register(ModuleName, 42, "cannot un-hold unbonding operation that is not on hold")
+
+	// jump code to 100 order to prevent sdk update in the future
+	ErrMinSelfDelegationInvalid = sdkerrors.Register(ModuleName, 100, "minimum self delegation must be a positive integer")
 )

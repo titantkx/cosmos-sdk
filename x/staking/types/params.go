@@ -35,15 +35,18 @@ const (
 // DefaultMinCommissionRate is set to 0%
 var DefaultMinCommissionRate = math.LegacyZeroDec()
 
+var DefaultGlobalMinSelfDelegation = math.NewInt(1)
+
 // NewParams creates a new Params instance
-func NewParams(unbondingTime time.Duration, maxValidators, maxEntries, historicalEntries uint32, bondDenom string, minCommissionRate sdk.Dec) Params {
+func NewParams(unbondingTime time.Duration, maxValidators, maxEntries, historicalEntries uint32, bondDenom string, minCommissionRate sdk.Dec, globalMinSelfDelegation math.Int) Params {
 	return Params{
-		UnbondingTime:     unbondingTime,
-		MaxValidators:     maxValidators,
-		MaxEntries:        maxEntries,
-		HistoricalEntries: historicalEntries,
-		BondDenom:         bondDenom,
-		MinCommissionRate: minCommissionRate,
+		UnbondingTime:           unbondingTime,
+		MaxValidators:           maxValidators,
+		MaxEntries:              maxEntries,
+		HistoricalEntries:       historicalEntries,
+		BondDenom:               bondDenom,
+		MinCommissionRate:       minCommissionRate,
+		GlobalMinSelfDelegation: globalMinSelfDelegation,
 	}
 }
 
@@ -56,6 +59,7 @@ func DefaultParams() Params {
 		DefaultHistoricalEntries,
 		sdk.DefaultBondDenom,
 		DefaultMinCommissionRate,
+		DefaultGlobalMinSelfDelegation,
 	)
 }
 
@@ -108,6 +112,10 @@ func (p Params) Validate() error {
 	}
 
 	if err := validateHistoricalEntries(p.HistoricalEntries); err != nil {
+		return err
+	}
+
+	if err := validateGlobalMinSelfDelegation(p.GlobalMinSelfDelegation); err != nil {
 		return err
 	}
 
@@ -206,6 +214,20 @@ func validateMinCommissionRate(i interface{}) error {
 	}
 	if v.GT(math.LegacyOneDec()) {
 		return fmt.Errorf("minimum commission rate cannot be greater than 100%%: %s", v)
+	}
+
+	return nil
+}
+
+func validateGlobalMinSelfDelegation(i interface{}) error {
+	v, ok := i.(math.Int)
+	if !ok {
+		return fmt.Errorf("invalid parameter type: %T", i)
+	}
+
+	// must be positive
+	if v.LT(math.NewInt(0)) {
+		return fmt.Errorf("global minimum self delegation cannot be negative: %s", v)
 	}
 
 	return nil

@@ -24,15 +24,31 @@ func TestParamsEqual(t *testing.T) {
 }
 
 func TestValidateParams(t *testing.T) {
-	params := types.DefaultParams()
+	{
+		params := types.DefaultParams()
 
-	// default params have no error
-	require.NoError(t, params.Validate())
+		// default params have no error
+		require.NoError(t, params.Validate())
 
-	// validate mincommission
-	params.MinCommissionRate = math.LegacyNewDec(-1)
-	require.Error(t, params.Validate())
+		// validate mincommission
+		params.MinCommissionRate = math.LegacyNewDec(-1)
+		require.Error(t, params.Validate())
 
-	params.MinCommissionRate = math.LegacyNewDec(2)
-	require.Error(t, params.Validate())
+		params.MinCommissionRate = math.LegacyNewDec(2)
+		require.Error(t, params.Validate())
+	}
+
+	{
+		// validate global min self delegation
+		params := types.DefaultParams()
+
+		params.GlobalMinSelfDelegation = math.NewInt(-1)
+		require.Error(t, params.Validate())
+
+		params.GlobalMinSelfDelegation = math.NewInt(0)
+		require.NoError(t, params.Validate())
+
+		params.GlobalMinSelfDelegation = math.NewInt(1)
+		require.NoError(t, params.Validate())
+	}
 }
