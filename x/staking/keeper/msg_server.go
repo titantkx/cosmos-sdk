@@ -42,6 +42,10 @@ func (k msgServer) CreateValidator(goCtx context.Context, msg *types.MsgCreateVa
 		return nil, sdkerrors.Wrapf(types.ErrCommissionLTMinRate, "cannot set validator commission to less than minimum rate of %s", k.MinCommissionRate(ctx))
 	}
 
+	if msg.MinSelfDelegation.LT(k.GlobalMinSelfDelegation(ctx)) {
+		return nil, sdkerrors.Wrapf(types.ErrMinSelfDelegationInvalid, "cannot set validator min self delegation to less than global minimum of %s", k.GlobalMinSelfDelegation(ctx))
+	}
+
 	// check to see if the pubkey or sender has been registered before
 	if _, found := k.GetValidator(ctx, valAddr); found {
 		return nil, types.ErrValidatorOwnerExists
@@ -171,6 +175,10 @@ func (k msgServer) EditValidator(goCtx context.Context, msg *types.MsgEditValida
 	}
 
 	if msg.MinSelfDelegation != nil {
+		if msg.MinSelfDelegation.LT(k.GlobalMinSelfDelegation(ctx)) {
+			return nil, types.ErrMinSelfDelegationInvalid
+		}
+
 		if !msg.MinSelfDelegation.GT(validator.MinSelfDelegation) {
 			return nil, types.ErrMinSelfDelegationDecreased
 		}
