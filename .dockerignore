@@ -3,4 +3,4 @@ Vagrantfile
 
 build/
 coverage.txt
-proto_mod
+.proto_mod

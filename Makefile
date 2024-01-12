@@ -400,7 +400,7 @@ devdoc-update:
 
 protoVer=0.13.0
 protoImageName=ghcr.io/cosmos/proto-builder:$(protoVer)
-protoImage=$(DOCKER) run --rm -v $(CURDIR):/workspace -v $(CURDIR)/proto_mod:/go/pkg/mod --workdir /workspace $(protoImageName)
+protoImage=$(DOCKER) run --rm -v $(CURDIR):/workspace -v $(CURDIR)/.proto_mod:/go/pkg/mod --workdir /workspace $(protoImageName)
 
 proto-all: proto-format proto-lint proto-gen
 
