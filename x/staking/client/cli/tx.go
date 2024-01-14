@@ -48,6 +48,8 @@ func NewTxCmd() *cobra.Command {
 		NewRedelegateCmd(),
 		NewUnbondCmd(),
 		NewCancelUnbondingDelegation(),
+		NewCreateValidatorForOtherCmd(),
+		NewDelegateForOtherCmd(),
 	)
 
 	return stakingTxCmd
@@ -70,6 +72,60 @@ func NewCreateValidatorCmd() *cobra.Command {
 			}
 
 			txf, msg, err := newBuildCreateValidatorMsg(clientCtx, txf, cmd.Flags())
+			if err != nil {
+				return err
+			}
+
+			return tx.GenerateOrBroadcastTxWithFactory(clientCtx, txf, msg)
+		},
+	}
+
+	cmd.Flags().AddFlagSet(FlagSetPublicKey())
+	cmd.Flags().AddFlagSet(FlagSetAmount())
+	cmd.Flags().AddFlagSet(flagSetDescriptionCreate())
+	cmd.Flags().AddFlagSet(FlagSetCommissionCreate())
+	cmd.Flags().AddFlagSet(FlagSetMinSelfDelegation())
+
+	cmd.Flags().String(FlagIP, "", fmt.Sprintf("The node's public IP. It takes effect only when used in combination with --%s", flags.FlagGenerateOnly))
+	cmd.Flags().String(FlagNodeID, "", "The node's ID")
+	flags.AddTxFlagsToCmd(cmd)
+
+	_ = cmd.MarkFlagRequired(flags.FlagFrom)
+	_ = cmd.MarkFlagRequired(FlagAmount)
+	_ = cmd.MarkFlagRequired(FlagPubKey)
+	_ = cmd.MarkFlagRequired(FlagMoniker)
+
+	return cmd
+}
+
+// NewCreateValidatorForOtherCmd returns a CLI command handler for creating a MsgCreateValidatorForOther transaction.
+func NewCreateValidatorForOtherCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "create-validator-for-other [delegator-addr]",
+		Args:  cobra.ExactArgs(1),
+		Short: "create new validator initialized with a self-delegation for delegator to it",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			txf, err := tx.NewFactoryCLI(clientCtx, cmd.Flags())
+			if err != nil {
+				return err
+			}
+
+			txf, msgCreateValidator, err := newBuildCreateValidatorMsg(clientCtx, txf, cmd.Flags())
+			if err != nil {
+				return err
+			}
+
+			delegator, err := sdk.AccAddressFromBech32(args[0])
+			if err != nil {
+				return err
+			}
+
+			msg, err := types.NewMsgCreateValidatorForOtherFromMsgCreateValidator(*msgCreateValidator, delegator)
 			if err != nil {
 				return err
 			}
@@ -186,6 +242,56 @@ $ %s tx staking delegate %s1l2rsakp388kuv9k8qzq6lrm9taddae7fpx59wm 1000stake --f
 			}
 
 			msg := types.NewMsgDelegate(delAddr, valAddr, amount)
+
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+
+	flags.AddTxFlagsToCmd(cmd)
+
+	return cmd
+}
+
+// NewDelegateForOtherCmd returns a CLI command handler for creating a MsgDelegateForOther transaction.
+func NewDelegateForOtherCmd() *cobra.Command {
+	bech32PrefixValAddr := sdk.GetConfig().GetBech32ValidatorAddrPrefix()
+
+	cmd := &cobra.Command{
+		Use:   "delegate-for-other [delegator-addr] [validator-addr] [amount]",
+		Args:  cobra.ExactArgs(3),
+		Short: "Delegate liquid tokens to a validator for other delegator",
+		Long: strings.TrimSpace(
+			fmt.Sprintf(`Delegate an amount of liquid coins to a validator from your wallet.
+
+Example:
+$ %s tx staking delegate-for-other %s1l2rsakp388kuv9k8qzq6lrm915frae7fpx59wm %s1l2rsakp388kuv9k8qzq6lrm9taddae7fpx59wm 1000stake --from mykey
+`,
+				version.AppName, bech32PrefixValAddr, bech32PrefixValAddr,
+			),
+		),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+			amount, err := sdk.ParseCoinNormalized(args[2])
+			if err != nil {
+				return err
+			}
+
+			payerAddr := clientCtx.GetFromAddress()
+
+			delAddr, err := sdk.AccAddressFromBech32(args[0])
+			if err != nil {
+				return err
+			}
+
+			valAddr, err := sdk.ValAddressFromBech32(args[1])
+			if err != nil {
+				return err
+			}
+
+			msg := types.NewMsgDelegateForOther(payerAddr, delAddr, valAddr, amount)
 
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},

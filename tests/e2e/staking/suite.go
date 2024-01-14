@@ -898,6 +898,7 @@ func (s *E2ETestSuite) TestGetCmdQueryParams() {
 			"with text output",
 			[]string{fmt.Sprintf("--%s=text", flags.FlagOutput)},
 			`bond_denom: stake
+global_min_self_delegation: "1"
 historical_entries: 10000
 max_entries: 7
 max_validators: 100
@@ -907,7 +908,7 @@ unbonding_time: 1814400s`,
 		{
 			"with json output",
 			[]string{fmt.Sprintf("--%s=json", flags.FlagOutput)},
-			`{"unbonding_time":"1814400s","max_validators":100,"max_entries":7,"historical_entries":10000,"bond_denom":"stake","min_commission_rate":"0.000000000000000000"}`,
+			`{"unbonding_time":"1814400s","max_validators":100,"max_entries":7,"historical_entries":10000,"bond_denom":"stake","min_commission_rate":"0.000000000000000000","global_min_self_delegation":"1"}`,
 		},
 	}
 	for _, tc := range testCases {
@@ -1497,7 +1498,6 @@ func (s *E2ETestSuite) TestBlockResults() {
 		)
 
 		return nil
-
 	}, 10)
 }
 
