@@ -37,6 +37,13 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## [Unreleased]
 
+## [v0.47.6-titan.2](https://github.com/tokenize-titan/cosmos-sdk/releases/tag/v0.47.6-titan.2) - 2024-01-14
+
+### Features
+
+* (x/staking) Support global min_self_delegation.
+* (x/staking) Implement stake and delegation for other address.
+
 ## [v0.47.6-titan.1](https://github.com/tokenize-titan/cosmos-sdk/releases/tag/v0.47.6-titan.1) - 2023-12-21
 
 ### Features
