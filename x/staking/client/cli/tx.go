@@ -49,6 +49,7 @@ func NewTxCmd() *cobra.Command {
 		NewUnbondCmd(),
 		NewCancelUnbondingDelegation(),
 		NewCreateValidatorForOtherCmd(),
+		NewDelegateForOtherCmd(),
 	)
 
 	return stakingTxCmd
@@ -97,7 +98,7 @@ func NewCreateValidatorCmd() *cobra.Command {
 	return cmd
 }
 
-// NewCreateValidatorCmd returns a CLI command handler for creating a MsgCreateValidator transaction.
+// NewCreateValidatorForOtherCmd returns a CLI command handler for creating a MsgCreateValidatorForOther transaction.
 func NewCreateValidatorForOtherCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create-validator-for-other [delegator-addr]",
