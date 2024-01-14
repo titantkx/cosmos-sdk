@@ -274,6 +274,146 @@ func (s *CLITestSuite) TestNewCreateValidatorCmd() {
 	}
 }
 
+func (s *CLITestSuite) TestNewCreateValidatorForOtherCmd() {
+	require := s.Require()
+
+	consPrivKey := ed25519.GenPrivKey()
+	consPubKeyBz, err := s.encCfg.Codec.MarshalInterfaceJSON(consPrivKey.PubKey())
+	require.NoError(err)
+	require.NotNil(consPubKeyBz)
+
+	testCases := []struct {
+		name         string
+		args         []string
+		expectErr    bool
+		expectedCode uint32
+		respType     proto.Message
+	}{
+		{
+			"invalid transaction (missing delegator address)",
+			[]string{
+				fmt.Sprintf("--%s=%s", cli.FlagPubKey, consPubKeyBz),
+				fmt.Sprintf("--%s=%dstake", cli.FlagAmount, 100),
+				fmt.Sprintf("--%s=NewValidator", cli.FlagMoniker),
+				fmt.Sprintf("--%s=AFAF00C4", cli.FlagIdentity),
+				fmt.Sprintf("--%s=https://newvalidator.io", cli.FlagWebsite),
+				fmt.Sprintf("--%s=contact@newvalidator.io", cli.FlagSecurityContact),
+				fmt.Sprintf("--%s='Hey, I am a new validator. Please delegate!'", cli.FlagDetails),
+				fmt.Sprintf("--%s=0.5", cli.FlagCommissionRate),
+				fmt.Sprintf("--%s=1.0", cli.FlagCommissionMaxRate),
+				fmt.Sprintf("--%s=0.1", cli.FlagCommissionMaxChangeRate),
+				fmt.Sprintf("--%s=1", cli.FlagMinSelfDelegation),
+				fmt.Sprintf("--%s=%s", flags.FlagFrom, s.addrs[0]),
+				fmt.Sprintf("--%s=true", flags.FlagSkipConfirmation),
+				fmt.Sprintf("--%s=%s", flags.FlagBroadcastMode, flags.BroadcastSync),
+				fmt.Sprintf("--%s=%s", flags.FlagFees, sdk.NewCoins(sdk.NewCoin(sdk.DefaultBondDenom, sdk.NewInt(10))).String()),
+			},
+			true, 0, nil,
+		},
+		{
+			"invalid transaction (missing amount)",
+			[]string{
+				sdk.AccAddress(s.addrs[1]).String(),
+				fmt.Sprintf("--%s=AFAF00C4", cli.FlagIdentity),
+				fmt.Sprintf("--%s=https://newvalidator.io", cli.FlagWebsite),
+				fmt.Sprintf("--%s=contact@newvalidator.io", cli.FlagSecurityContact),
+				fmt.Sprintf("--%s='Hey, I am a new validator. Please delegate!'", cli.FlagDetails),
+				fmt.Sprintf("--%s=0.5", cli.FlagCommissionRate),
+				fmt.Sprintf("--%s=1.0", cli.FlagCommissionMaxRate),
+				fmt.Sprintf("--%s=0.1", cli.FlagCommissionMaxChangeRate),
+				fmt.Sprintf("--%s=1", cli.FlagMinSelfDelegation),
+				fmt.Sprintf("--%s=%s", flags.FlagFrom, s.addrs[0]),
+				fmt.Sprintf("--%s=true", flags.FlagSkipConfirmation),
+				fmt.Sprintf("--%s=%s", flags.FlagBroadcastMode, flags.BroadcastSync),
+				fmt.Sprintf("--%s=%s", flags.FlagFees, sdk.NewCoins(sdk.NewCoin(sdk.DefaultBondDenom, sdk.NewInt(10))).String()),
+			},
+			true, 0, nil,
+		},
+		{
+			"invalid transaction (missing pubkey)",
+			[]string{
+				sdk.AccAddress(s.addrs[1]).String(),
+				fmt.Sprintf("--%s=%dstake", cli.FlagAmount, 100),
+				fmt.Sprintf("--%s=AFAF00C4", cli.FlagIdentity),
+				fmt.Sprintf("--%s=https://newvalidator.io", cli.FlagWebsite),
+				fmt.Sprintf("--%s=contact@newvalidator.io", cli.FlagSecurityContact),
+				fmt.Sprintf("--%s='Hey, I am a new validator. Please delegate!'", cli.FlagDetails),
+				fmt.Sprintf("--%s=0.5", cli.FlagCommissionRate),
+				fmt.Sprintf("--%s=1.0", cli.FlagCommissionMaxRate),
+				fmt.Sprintf("--%s=0.1", cli.FlagCommissionMaxChangeRate),
+				fmt.Sprintf("--%s=1", cli.FlagMinSelfDelegation),
+				fmt.Sprintf("--%s=%s", flags.FlagFrom, s.addrs[0]),
+				fmt.Sprintf("--%s=true", flags.FlagSkipConfirmation),
+				fmt.Sprintf("--%s=%s", flags.FlagBroadcastMode, flags.BroadcastSync),
+				fmt.Sprintf("--%s=%s", flags.FlagFees, sdk.NewCoins(sdk.NewCoin(sdk.DefaultBondDenom, sdk.NewInt(10))).String()),
+			},
+			true, 0, nil,
+		},
+		{
+			"invalid transaction (missing moniker)",
+			[]string{
+				sdk.AccAddress(s.addrs[1]).String(),
+				fmt.Sprintf("--%s=%s", cli.FlagPubKey, consPubKeyBz),
+				fmt.Sprintf("--%s=%dstake", cli.FlagAmount, 100),
+				fmt.Sprintf("--%s=AFAF00C4", cli.FlagIdentity),
+				fmt.Sprintf("--%s=https://newvalidator.io", cli.FlagWebsite),
+				fmt.Sprintf("--%s=contact@newvalidator.io", cli.FlagSecurityContact),
+				fmt.Sprintf("--%s='Hey, I am a new validator. Please delegate!'", cli.FlagDetails),
+				fmt.Sprintf("--%s=0.5", cli.FlagCommissionRate),
+				fmt.Sprintf("--%s=1.0", cli.FlagCommissionMaxRate),
+				fmt.Sprintf("--%s=0.1", cli.FlagCommissionMaxChangeRate),
+				fmt.Sprintf("--%s=1", cli.FlagMinSelfDelegation),
+				fmt.Sprintf("--%s=%s", flags.FlagFrom, s.addrs[0]),
+				fmt.Sprintf("--%s=true", flags.FlagSkipConfirmation),
+				fmt.Sprintf("--%s=%s", flags.FlagBroadcastMode, flags.BroadcastSync),
+				fmt.Sprintf("--%s=%s", flags.FlagFees, sdk.NewCoins(sdk.NewCoin(sdk.DefaultBondDenom, sdk.NewInt(10))).String()),
+			},
+			true, 0, nil,
+		},
+		{
+			"valid transaction",
+			[]string{
+				sdk.AccAddress(s.addrs[1]).String(),
+				fmt.Sprintf("--%s=%s", cli.FlagPubKey, consPubKeyBz),
+				fmt.Sprintf("--%s=%dstake", cli.FlagAmount, 100),
+				fmt.Sprintf("--%s=NewValidator", cli.FlagMoniker),
+				fmt.Sprintf("--%s=AFAF00C4", cli.FlagIdentity),
+				fmt.Sprintf("--%s=https://newvalidator.io", cli.FlagWebsite),
+				fmt.Sprintf("--%s=contact@newvalidator.io", cli.FlagSecurityContact),
+				fmt.Sprintf("--%s='Hey, I am a new validator. Please delegate!'", cli.FlagDetails),
+				fmt.Sprintf("--%s=0.5", cli.FlagCommissionRate),
+				fmt.Sprintf("--%s=1.0", cli.FlagCommissionMaxRate),
+				fmt.Sprintf("--%s=0.1", cli.FlagCommissionMaxChangeRate),
+				fmt.Sprintf("--%s=1", cli.FlagMinSelfDelegation),
+				fmt.Sprintf("--%s=%s", flags.FlagFrom, s.addrs[0]),
+				fmt.Sprintf("--%s=true", flags.FlagSkipConfirmation),
+				fmt.Sprintf("--%s=%s", flags.FlagBroadcastMode, flags.BroadcastSync),
+				fmt.Sprintf("--%s=%s", flags.FlagFees, sdk.NewCoins(sdk.NewCoin(sdk.DefaultBondDenom, sdk.NewInt(10))).String()),
+			},
+			false, 0, &sdk.TxResponse{},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		s.Run(tc.name, func() {
+			cmd := cli.NewCreateValidatorForOtherCmd()
+			out, err := clitestutil.ExecTestCLICmd(s.clientCtx, cmd, tc.args)
+			if tc.expectErr {
+				require.Error(err)
+			} else {
+				require.NoError(err, "test: %s\noutput: %s", tc.name, out.String())
+				err = s.clientCtx.Codec.UnmarshalJSON(out.Bytes(), tc.respType)
+				require.NoError(err, out.String(), "test: %s, output\n:", tc.name, out.String())
+
+				txResp := tc.respType.(*sdk.TxResponse)
+				require.Equal(tc.expectedCode, txResp.Code,
+					"test: %s, output\n:", tc.name, out.String())
+			}
+		})
+	}
+}
+
 func (s *CLITestSuite) TestNewEditValidatorCmd() {
 	cmd := cli.NewEditValidatorCmd()
 
@@ -423,6 +563,85 @@ func (s *CLITestSuite) TestNewDelegateCmd() {
 			"valid transaction of delegate",
 			[]string{
 				sdk.ValAddress(s.addrs[0]).String(),
+				sdk.NewCoin(sdk.DefaultBondDenom, sdk.NewInt(150)).String(),
+				fmt.Sprintf("--%s=%s", flags.FlagFrom, s.addrs[0]),
+				fmt.Sprintf("--%s=true", flags.FlagSkipConfirmation),
+				fmt.Sprintf("--%s=%s", flags.FlagBroadcastMode, flags.BroadcastSync),
+				fmt.Sprintf("--%s=%s", flags.FlagFees, sdk.NewCoins(sdk.NewCoin(sdk.DefaultBondDenom, sdk.NewInt(10))).String()),
+			},
+			false, 0, &sdk.TxResponse{},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		s.Run(tc.name, func() {
+			out, err := clitestutil.ExecTestCLICmd(s.clientCtx, cmd, tc.args)
+			if tc.expectErr {
+				s.Require().Error(err)
+			} else {
+				s.Require().NoError(err, out.String())
+				s.Require().NoError(s.clientCtx.Codec.UnmarshalJSON(out.Bytes(), tc.respType), out.String())
+
+				txResp := tc.respType.(*sdk.TxResponse)
+				s.Require().Equal(tc.expectedCode, txResp.Code, out.String())
+			}
+		})
+	}
+}
+
+func (s *CLITestSuite) TestNewDelegateForOtherCmd() {
+	cmd := cli.NewDelegateForOtherCmd()
+
+	testCases := []struct {
+		name         string
+		args         []string
+		expectErr    bool
+		expectedCode uint32
+		respType     proto.Message
+	}{
+		{
+			"without delegate address",
+			[]string{
+				sdk.ValAddress(s.addrs[2]).String(),
+				sdk.NewCoin(sdk.DefaultBondDenom, sdk.NewInt(150)).String(),
+				fmt.Sprintf("--%s=%s", flags.FlagFrom, s.addrs[0]),
+				fmt.Sprintf("--%s=true", flags.FlagSkipConfirmation),
+				fmt.Sprintf("--%s=%s", flags.FlagBroadcastMode, flags.BroadcastSync),
+				fmt.Sprintf("--%s=%s", flags.FlagFees, sdk.NewCoins(sdk.NewCoin(sdk.DefaultBondDenom, sdk.NewInt(10))).String()),
+			},
+			true, 0, nil,
+		},
+		{
+			"without delegate amount",
+			[]string{
+				sdk.AccAddress(s.addrs[1]).String(),
+				sdk.ValAddress(s.addrs[2]).String(),
+				fmt.Sprintf("--%s=%s", flags.FlagFrom, s.addrs[0]),
+				fmt.Sprintf("--%s=true", flags.FlagSkipConfirmation),
+				fmt.Sprintf("--%s=%s", flags.FlagBroadcastMode, flags.BroadcastSync),
+				fmt.Sprintf("--%s=%s", flags.FlagFees, sdk.NewCoins(sdk.NewCoin(sdk.DefaultBondDenom, sdk.NewInt(10))).String()),
+			},
+			true, 0, nil,
+		},
+		{
+			"without validator address",
+			[]string{
+				sdk.AccAddress(s.addrs[1]).String(),
+				sdk.NewCoin(sdk.DefaultBondDenom, sdk.NewInt(150)).String(),
+				fmt.Sprintf("--%s=%s", flags.FlagFrom, s.addrs[0]),
+				fmt.Sprintf("--%s=true", flags.FlagSkipConfirmation),
+				fmt.Sprintf("--%s=%s", flags.FlagBroadcastMode, flags.BroadcastSync),
+				fmt.Sprintf("--%s=%s", flags.FlagFees, sdk.NewCoins(sdk.NewCoin(sdk.DefaultBondDenom, sdk.NewInt(10))).String()),
+			},
+			true, 0, nil,
+		},
+		{
+			"valid transaction of delegate",
+			[]string{
+				sdk.AccAddress(s.addrs[1]).String(),
+				sdk.ValAddress(s.addrs[2]).String(),
 				sdk.NewCoin(sdk.DefaultBondDenom, sdk.NewInt(150)).String(),
 				fmt.Sprintf("--%s=%s", flags.FlagFrom, s.addrs[0]),
 				fmt.Sprintf("--%s=true", flags.FlagSkipConfirmation),

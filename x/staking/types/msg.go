@@ -17,6 +17,8 @@ const (
 	TypeMsgDelegate                  = "delegate"
 	TypeMsgBeginRedelegate           = "begin_redelegate"
 	TypeMsgUpdateParams              = "update_params"
+	TypeMsgCreateValidatorForOther   = "create_validator_for_other"
+	TypeMsgDelegateForOther          = "delegate_for_other"
 )
 
 var (
@@ -420,4 +422,193 @@ func (m *MsgUpdateParams) ValidateBasic() error {
 func (m *MsgUpdateParams) GetSigners() []sdk.AccAddress {
 	addr, _ := sdk.AccAddressFromBech32(m.Authority)
 	return []sdk.AccAddress{addr}
+}
+
+// NewMsgCreateValidator creates a new MsgCreateValidator instance.
+// Delegator address and validator address are the same.
+func NewMsgCreateValidatorForOther(
+	payerAddr sdk.AccAddress,
+	valAddr sdk.ValAddress, pubKey cryptotypes.PubKey, //nolint:interfacer
+	selfDelegation sdk.Coin, description Description, commission CommissionRates, minSelfDelegation math.Int,
+) (*MsgCreateValidatorForOther, error) {
+	var pkAny *codectypes.Any
+	if pubKey != nil {
+		var err error
+		if pkAny, err = codectypes.NewAnyWithValue(pubKey); err != nil {
+			return nil, err
+		}
+	}
+	return &MsgCreateValidatorForOther{
+		PayerAddress:      payerAddr.String(),
+		Description:       description,
+		DelegatorAddress:  sdk.AccAddress(valAddr).String(),
+		ValidatorAddress:  valAddr.String(),
+		Pubkey:            pkAny,
+		Value:             selfDelegation,
+		Commission:        commission,
+		MinSelfDelegation: minSelfDelegation,
+	}, nil
+}
+
+func NewMsgCreateValidatorForOtherFromMsgCreateValidator(msgCreateValidator MsgCreateValidator, payerAddr sdk.AccAddress) (*MsgCreateValidatorForOther, error) {
+	return NewMsgCreateValidatorForOther(
+		payerAddr,
+		sdk.ValAddress(msgCreateValidator.ValidatorAddress),
+		msgCreateValidator.Pubkey.GetCachedValue().(cryptotypes.PubKey),
+		msgCreateValidator.Value,
+		msgCreateValidator.Description,
+		msgCreateValidator.Commission,
+		msgCreateValidator.MinSelfDelegation,
+	)
+}
+
+// Route implements the sdk.Msg interface.
+func (msg MsgCreateValidatorForOther) Route() string { return RouterKey }
+
+// Type implements the sdk.Msg interface.
+func (msg MsgCreateValidatorForOther) Type() string { return TypeMsgCreateValidatorForOther }
+
+// GetSigners implements the sdk.Msg interface. It returns the address(es) that
+// must sign over msg.GetSignBytes().
+// If the validator address is not same as delegator's, then the validator must
+// sign the msg as well.
+func (msg MsgCreateValidatorForOther) GetSigners() []sdk.AccAddress {
+	// payer is first signer so payer pays fees
+	payer, _ := sdk.AccAddressFromBech32(msg.PayerAddress)
+	addrs := []sdk.AccAddress{payer}
+	delegator, _ := sdk.AccAddressFromBech32(msg.DelegatorAddress)
+	valAddr, _ := sdk.ValAddressFromBech32(msg.ValidatorAddress)
+
+	valAccAddr := sdk.AccAddress(valAddr)
+	if !delegator.Equals(valAccAddr) {
+		addrs = append(addrs, valAccAddr)
+	}
+
+	return addrs
+}
+
+// GetSignBytes returns the message bytes to sign over.
+func (msg MsgCreateValidatorForOther) GetSignBytes() []byte {
+	bz := ModuleCdc.MustMarshalJSON(&msg)
+	return sdk.MustSortJSON(bz)
+}
+
+// ValidateBasic implements the sdk.Msg interface.
+func (msg MsgCreateValidatorForOther) ValidateBasic() error {
+	// note that unmarshaling from bech32 ensures both non-empty and valid
+	payerAddr, err := sdk.AccAddressFromBech32(msg.PayerAddress)
+	if err != nil {
+		return sdkerrors.ErrInvalidAddress.Wrapf("invalid payer address: %s", err)
+	}
+	delAddr, err := sdk.AccAddressFromBech32(msg.DelegatorAddress)
+	if err != nil {
+		return sdkerrors.ErrInvalidAddress.Wrapf("invalid delegator address: %s", err)
+	}
+	valAddr, err := sdk.ValAddressFromBech32(msg.ValidatorAddress)
+	if err != nil {
+		return sdkerrors.ErrInvalidAddress.Wrapf("invalid validator address: %s", err)
+	}
+	if payerAddr.Equals(delAddr) {
+		return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "delegator address is invalid, must not be same as payer address")
+	}
+	if !sdk.AccAddress(valAddr).Equals(delAddr) {
+		return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "validator address is invalid")
+	}
+
+	if msg.Pubkey == nil {
+		return ErrEmptyValidatorPubKey
+	}
+
+	if !msg.Value.IsValid() || !msg.Value.Amount.IsPositive() {
+		return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "invalid delegation amount")
+	}
+
+	if msg.Description == (Description{}) {
+		return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "empty description")
+	}
+
+	if msg.Commission == (CommissionRates{}) {
+		return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "empty commission")
+	}
+
+	if err := msg.Commission.Validate(); err != nil {
+		return err
+	}
+
+	if !msg.MinSelfDelegation.IsPositive() {
+		return sdkerrors.Wrap(
+			sdkerrors.ErrInvalidRequest,
+			"minimum self delegation must be a positive integer",
+		)
+	}
+
+	if msg.Value.Amount.LT(msg.MinSelfDelegation) {
+		return ErrSelfDelegationBelowMinimum
+	}
+
+	return nil
+}
+
+// UnpackInterfaces implements UnpackInterfacesMessage.UnpackInterfaces
+func (msg MsgCreateValidatorForOther) UnpackInterfaces(unpacker codectypes.AnyUnpacker) error {
+	var pubKey cryptotypes.PubKey
+	return unpacker.UnpackAny(msg.Pubkey, &pubKey)
+}
+
+// NewMsgDelegateForOther creates a new MsgDelegateForOther instance.
+//
+//nolint:interfacer
+func NewMsgDelegateForOther(payerAddr sdk.AccAddress, delAddr sdk.AccAddress, valAddr sdk.ValAddress, amount sdk.Coin) *MsgDelegateForOther {
+	return &MsgDelegateForOther{
+		PayerAddress:     payerAddr.String(),
+		DelegatorAddress: delAddr.String(),
+		ValidatorAddress: valAddr.String(),
+		Amount:           amount,
+	}
+}
+
+// Route implements the sdk.Msg interface.
+func (msg MsgDelegateForOther) Route() string { return RouterKey }
+
+// Type implements the sdk.Msg interface.
+func (msg MsgDelegateForOther) Type() string { return TypeMsgDelegateForOther }
+
+// GetSigners implements the sdk.Msg interface.
+func (msg MsgDelegateForOther) GetSigners() []sdk.AccAddress {
+	payer, _ := sdk.AccAddressFromBech32(msg.PayerAddress)
+	return []sdk.AccAddress{payer}
+}
+
+// GetSignBytes implements the sdk.Msg interface.
+func (msg MsgDelegateForOther) GetSignBytes() []byte {
+	bz := ModuleCdc.MustMarshalJSON(&msg)
+	return sdk.MustSortJSON(bz)
+}
+
+// ValidateBasic implements the sdk.Msg interface.
+func (msg MsgDelegateForOther) ValidateBasic() error {
+	payerAddr, err := sdk.AccAddressFromBech32(msg.PayerAddress)
+	if err != nil {
+		return sdkerrors.ErrInvalidAddress.Wrapf("invalid payer address: %s", err)
+	}
+	delAddr, err := sdk.AccAddressFromBech32(msg.DelegatorAddress)
+	if err != nil {
+		return sdkerrors.ErrInvalidAddress.Wrapf("invalid delegator address: %s", err)
+	}
+	if _, err := sdk.ValAddressFromBech32(msg.ValidatorAddress); err != nil {
+		return sdkerrors.ErrInvalidAddress.Wrapf("invalid validator address: %s", err)
+	}
+
+	if payerAddr.Equals(delAddr) {
+		return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "delegator address is invalid, must not be same as payer address")
+	}
+
+	if !msg.Amount.IsValid() || !msg.Amount.Amount.IsPositive() {
+		return sdkerrors.Wrap(
+			sdkerrors.ErrInvalidRequest,
+			"invalid delegation amount",
+		)
+	}
+
+	return nil
 }
