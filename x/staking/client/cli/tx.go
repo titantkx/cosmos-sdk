@@ -115,17 +115,12 @@ func NewCreateValidatorForOtherCmd() *cobra.Command {
 				return err
 			}
 
-			txf, msgCreateValidator, err := newBuildCreateValidatorMsg(clientCtx, txf, cmd.Flags())
-			if err != nil {
-				return err
-			}
-
 			delegator, err := sdk.AccAddressFromBech32(args[0])
 			if err != nil {
 				return err
 			}
 
-			msg, err := types.NewMsgCreateValidatorForOtherFromMsgCreateValidator(*msgCreateValidator, delegator)
+			txf, msg, err := newBuildCreateValidatorForOtherMsg(clientCtx, txf, cmd.Flags(), delegator)
 			if err != nil {
 				return err
 			}
@@ -497,6 +492,80 @@ func newBuildCreateValidatorMsg(clientCtx client.Context, txf tx.Factory, fs *fl
 
 	msg, err := types.NewMsgCreateValidator(
 		sdk.ValAddress(valAddr), pk, amount, description, commissionRates, minSelfDelegation,
+	)
+	if err != nil {
+		return txf, nil, err
+	}
+	if err := msg.ValidateBasic(); err != nil {
+		return txf, nil, err
+	}
+
+	genOnly, _ := fs.GetBool(flags.FlagGenerateOnly)
+	if genOnly {
+		ip, _ := fs.GetString(FlagIP)
+		p2pPort, _ := fs.GetUint(FlagP2PPort)
+		nodeID, _ := fs.GetString(FlagNodeID)
+
+		if nodeID != "" && ip != "" && p2pPort > 0 {
+			txf = txf.WithMemo(fmt.Sprintf("%s@%s:%d", nodeID, ip, p2pPort))
+		}
+	}
+
+	return txf, msg, nil
+}
+
+func newBuildCreateValidatorForOtherMsg(clientCtx client.Context, txf tx.Factory, fs *flag.FlagSet, delegator sdk.AccAddress) (tx.Factory, *types.MsgCreateValidatorForOther, error) {
+	fAmount, _ := fs.GetString(FlagAmount)
+	amount, err := sdk.ParseCoinNormalized(fAmount)
+	if err != nil {
+		return txf, nil, err
+	}
+
+	payerAddr := clientCtx.GetFromAddress()
+	pkStr, err := fs.GetString(FlagPubKey)
+	if err != nil {
+		return txf, nil, err
+	}
+
+	var pk cryptotypes.PubKey
+	if err := clientCtx.Codec.UnmarshalInterfaceJSON([]byte(pkStr), &pk); err != nil {
+		return txf, nil, err
+	}
+
+	moniker, _ := fs.GetString(FlagMoniker)
+	identity, _ := fs.GetString(FlagIdentity)
+	website, _ := fs.GetString(FlagWebsite)
+	security, _ := fs.GetString(FlagSecurityContact)
+	details, _ := fs.GetString(FlagDetails)
+	description := types.NewDescription(
+		moniker,
+		identity,
+		website,
+		security,
+		details,
+	)
+
+	// get the initial validator commission parameters
+	rateStr, _ := fs.GetString(FlagCommissionRate)
+	maxRateStr, _ := fs.GetString(FlagCommissionMaxRate)
+	maxChangeRateStr, _ := fs.GetString(FlagCommissionMaxChangeRate)
+
+	commissionRates, err := buildCommissionRates(rateStr, maxRateStr, maxChangeRateStr)
+	if err != nil {
+		return txf, nil, err
+	}
+
+	// get the initial validator min self delegation
+	msbStr, _ := fs.GetString(FlagMinSelfDelegation)
+
+	minSelfDelegation, ok := sdk.NewIntFromString(msbStr)
+	if !ok {
+		return txf, nil, sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "minimum self delegation must be a positive integer")
+	}
+
+	msg, err := types.NewMsgCreateValidatorForOther(
+		payerAddr,
+		sdk.ValAddress(delegator), pk, amount, description, commissionRates, minSelfDelegation,
 	)
 	if err != nil {
 		return txf, nil, err
