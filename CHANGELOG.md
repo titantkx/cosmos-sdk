@@ -37,6 +37,12 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## [Unreleased]
 
+## [v0.47.6-titan.3](https://github.com/tokenize-titan/cosmos-sdk/releases/tag/v0.47.6-titan.3) - 2024-01-15
+
+## Fixes
+
+* (x/staking/cli) correct build msg for `create-validator-for-other`` cmd
+
 ## [v0.47.6-titan.2](https://github.com/tokenize-titan/cosmos-sdk/releases/tag/v0.47.6-titan.2) - 2024-01-14
 
 ### Features
