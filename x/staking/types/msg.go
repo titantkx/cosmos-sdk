@@ -450,18 +450,6 @@ func NewMsgCreateValidatorForOther(
 	}, nil
 }
 
-func NewMsgCreateValidatorForOtherFromMsgCreateValidator(msgCreateValidator MsgCreateValidator, payerAddr sdk.AccAddress) (*MsgCreateValidatorForOther, error) {
-	return NewMsgCreateValidatorForOther(
-		payerAddr,
-		sdk.ValAddress(msgCreateValidator.ValidatorAddress),
-		msgCreateValidator.Pubkey.GetCachedValue().(cryptotypes.PubKey),
-		msgCreateValidator.Value,
-		msgCreateValidator.Description,
-		msgCreateValidator.Commission,
-		msgCreateValidator.MinSelfDelegation,
-	)
-}
-
 // Route implements the sdk.Msg interface.
 func (msg MsgCreateValidatorForOther) Route() string { return RouterKey }
 
