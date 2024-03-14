@@ -37,26 +37,26 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## [Unreleased]
 
-## [v0.47.6-titan.4](https://github.com/tokenize-titan/cosmos-sdk/releases/tag/v0.47.6-titan.4) - 2024-03-13
+## [v0.47.6-titan.4](https://github.com/titantkx/cosmos-sdk/releases/tag/v0.47.6-titan.4) - 2024-03-13
 
 ### Fixes
 
 * (x/staking) register missing amino codec for `MsgCreateValidatorForOther` and `MsgDelegateForOther`
 
-## [v0.47.6-titan.3](https://github.com/tokenize-titan/cosmos-sdk/releases/tag/v0.47.6-titan.3) - 2024-01-15
+## [v0.47.6-titan.3](https://github.com/titantkx/cosmos-sdk/releases/tag/v0.47.6-titan.3) - 2024-01-15
 
 ### Fixes
 
 * (x/staking/cli) correct build msg for `create-validator-for-other`` cmd
 
-## [v0.47.6-titan.2](https://github.com/tokenize-titan/cosmos-sdk/releases/tag/v0.47.6-titan.2) - 2024-01-14
+## [v0.47.6-titan.2](https://github.com/titantkx/cosmos-sdk/releases/tag/v0.47.6-titan.2) - 2024-01-14
 
 ### Features
 
 * (x/staking) Support global min_self_delegation.
 * (x/staking) Implement stake and delegation for other address.
 
-## [v0.47.6-titan.1](https://github.com/tokenize-titan/cosmos-sdk/releases/tag/v0.47.6-titan.1) - 2023-12-21
+## [v0.47.6-titan.1](https://github.com/titantkx/cosmos-sdk/releases/tag/v0.47.6-titan.1) - 2023-12-21
 
 ### Features
 
