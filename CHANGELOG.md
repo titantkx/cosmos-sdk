@@ -37,6 +37,12 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## [Unreleased]
 
+## [v0.47.6-titan.5](https://github.com/titantkx/cosmos-sdk/releases/tag/v0.47.6-titan.5) - 2024-05-08
+
+### Features
+
+* (x/auth) support query txs with `CONTAINS` operator for `events` field.
+
 ## [v0.47.6-titan.4](https://github.com/titantkx/cosmos-sdk/releases/tag/v0.47.6-titan.4) - 2024-03-13
 
 ### Fixes
