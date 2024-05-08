@@ -290,19 +290,24 @@ $ %s query txs --%s 'message.sender=cosmos1...&message.action=withdraw_delegator
 			var tmEvents []string
 
 			for _, event := range events {
-				if !strings.Contains(event, "=") {
+				if !strings.Contains(event, "=") && !strings.Contains(event, "CONTAINS") {
 					return fmt.Errorf("invalid event; event %s should be of the format: %s", event, eventFormat)
 				} else if strings.Count(event, "=") > 1 {
 					return fmt.Errorf("invalid event; event %s should be of the format: %s", event, eventFormat)
 				}
 
-				tokens := strings.Split(event, "=")
-				if tokens[0] == tmtypes.TxHeightKey {
-					event = fmt.Sprintf("%s=%s", tokens[0], tokens[1])
-				} else {
-					event = fmt.Sprintf("%s='%s'", tokens[0], tokens[1])
+				if strings.Contains(event, "=") {
+					tokens := strings.Split(event, "=")
+					if tokens[0] == tmtypes.TxHeightKey {
+						event = fmt.Sprintf("%s=%s", tokens[0], tokens[1])
+					} else {
+						event = fmt.Sprintf("%s='%s'", tokens[0], tokens[1])
+					}
+				} else if strings.Contains(event, "CONTAINS") {
+					tokens := strings.Split(event, " CONTAINS ")
+					event = fmt.Sprintf("%s CONTAINS '%s'", tokens[0], tokens[1])
 				}
-
+				fmt.Println("event: ", event)
 				tmEvents = append(tmEvents, event)
 			}
 
