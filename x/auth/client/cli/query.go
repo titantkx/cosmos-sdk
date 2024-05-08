@@ -307,7 +307,6 @@ $ %s query txs --%s 'message.sender=cosmos1...&message.action=withdraw_delegator
 					tokens := strings.Split(event, " CONTAINS ")
 					event = fmt.Sprintf("%s CONTAINS '%s'", tokens[0], tokens[1])
 				}
-				fmt.Println("event: ", event)
 				tmEvents = append(tmEvents, event)
 			}
 
