@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"cosmossdk.io/tools/cosmovisor"
@@ -10,6 +11,10 @@ import (
 )
 
 func TestVersionCommand_Error(t *testing.T) {
+	// Unset the environment variable
+	err := os.Unsetenv("DAEMON_NAME")
+	require.NoError(t, err)
+
 	logger := cosmovisor.NewLogger()
 
 	rootCmd.SetArgs([]string{"version"})
