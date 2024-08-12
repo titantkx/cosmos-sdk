@@ -693,13 +693,18 @@ func (n *Network) RetryForBlocks(retryFunc func() error, blocks int) error {
 
 // WaitForNextBlock waits for the next block to be committed, returning an error
 // upon failure.
-func (n *Network) WaitForNextBlock() error {
+func (n *Network) WaitForNextBlock(numberOfBlocks ...int64) error {
+	blocks := int64(2) // default value
+	if len(numberOfBlocks) > 0 {
+		blocks = numberOfBlocks[0]
+	}
+
 	lastBlock, err := n.LatestHeight()
 	if err != nil {
 		return err
 	}
 
-	_, err = n.WaitForHeight(lastBlock + 1)
+	_, err = n.WaitForHeight(lastBlock + blocks)
 	if err != nil {
 		return err
 	}

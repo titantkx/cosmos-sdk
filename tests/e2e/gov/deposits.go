@@ -52,7 +52,7 @@ func (s *DepositTestSuite) submitProposal(val *network.Validator, initialDeposit
 		exactArgs...,
 	)
 	s.Require().NoError(err)
-	s.Require().NoError(s.network.WaitForNextBlock())
+	s.Require().NoError(s.network.WaitForNextBlock(1))
 
 	// query proposals, return the last's id
 	cmd := cli.GetCmdQueryProposals()
@@ -111,7 +111,7 @@ func (s *DepositTestSuite) TestQueryDepositsWithInitialDeposit() {
 	deposit := s.queryDeposit(val, proposalID, false, "")
 	s.Require().NotNil(deposit)
 	s.Require().Equal(sdk.Coins(deposit.Amount).String(), depositAmount.String())
-	s.Require().NoError(s.network.WaitForNextBlock())
+	// s.Require().NoError(s.network.WaitForNextBlock(1))
 
 	// query deposits
 	deposits := s.queryDeposits(val, proposalID, false, "")
