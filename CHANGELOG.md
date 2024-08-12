@@ -37,6 +37,18 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## [Unreleased]
 
+## [v0.47.6-titan.6](https://github.com/titantkx/cosmos-sdk/releases/tag/v0.47.6-titan.6) - 2024-08-12
+
+### Improvements
+
+* (deps) Upgrade x/exp and gogoproto version 
+
+### Miscellaneous
+
+* (test) Update test cases for previus version update: "support query txs with `CONTAINS` operator for `events` field."
+* (test) Correct test case `TestVersionCommand_Error` for situation system enviroment already set `DAEMON_NAME` variable.
+* (test) Increase `WaitForNextBlock` to wait 2 blocks (improve for testcase sometime fail by timing)
+
 ## [v0.47.6-titan.5](https://github.com/titantkx/cosmos-sdk/releases/tag/v0.47.6-titan.5) - 2024-05-08
 
 ### Features
