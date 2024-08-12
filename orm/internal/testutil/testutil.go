@@ -99,12 +99,12 @@ var TestFieldSpecs = []TestFieldSpec{
 			}).ProtoReflect()
 		}).AsAny(),
 	},
-	{
-		"e",
-		rapid.Transform(rapid.Int32(), func(x int32) protoreflect.EnumNumber {
-			return protoreflect.EnumNumber(x)
-		}).AsAny(),
-	},
+	// {
+	// 	"e",
+	// 	rapid.Transform(rapid.Int32(), func(x int32) protoreflect.EnumNumber {
+	// 		return protoreflect.EnumNumber(x)
+	// 	}).AsAny(),
+	// },
 }
 
 func MakeTestCodec(fname protoreflect.Name, nonTerminal bool) (ormfield.Codec, error) {

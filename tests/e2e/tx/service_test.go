@@ -149,7 +149,7 @@ func (s *E2ETestSuite) TestQueryBySig() {
 	s.Require().Equal(res.Txs[0].Signatures[0], sig.Signature)
 
 	// bad format should error
-	_, err = s.queryClient.GetTxsEvent(context.Background(), &tx.GetTxsEventRequest{Events: []string{"tx.foo.bar='baz'"}})
+	_, err = s.queryClient.GetTxsEvent(context.Background(), &tx.GetTxsEventRequest{Events: []string{"tx.foo..bar='baz'"}})
 	s.Require().ErrorContains(err, "invalid event;")
 }
 
@@ -177,9 +177,9 @@ func TestEventRegex(t *testing.T) {
 			match: true,
 		},
 		{
-			name:  "invalid: too many separators",
+			name:  "valid: can have many separators",
 			event: "tx.message.foo='bar'",
-			match: false,
+			match: true,
 		},
 		{
 			name:  "valid: symbols ok",
@@ -194,6 +194,11 @@ func TestEventRegex(t *testing.T) {
 		{
 			name:  "valid: with <= operator",
 			event: "tx.height<=10'",
+			match: true,
+		},
+		{
+			name:  "valid: can use CONTAINS operator",
+			event: "tx.message CONTAINS 'bar'",
 			match: true,
 		},
 	}
