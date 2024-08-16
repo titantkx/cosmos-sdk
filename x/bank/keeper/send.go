@@ -53,6 +53,7 @@ type BaseSendKeeper struct {
 	cdc      codec.BinaryCodec
 	ak       types.AccountKeeper
 	storeKey storetypes.StoreKey
+	hooks    types.BankHooks
 
 	// list of addresses that are restricted from receiving transactions
 	blockedAddrs map[string]bool
@@ -86,6 +87,15 @@ func NewBaseSendKeeper(
 // GetAuthority returns the x/bank module's authority.
 func (k BaseSendKeeper) GetAuthority() string {
 	return k.authority
+}
+
+// SetHooks sets the bank hooks
+func (k *BaseSendKeeper) SetHooks(bh types.BankHooks) {
+	if k.hooks != nil {
+		panic("cannot set bank hooks twice")
+	}
+
+	k.hooks = bh
 }
 
 // GetParams returns the total set of bank parameters.
@@ -187,9 +197,26 @@ func (k BaseSendKeeper) InputOutputCoins(ctx sdk.Context, inputs []types.Input, 
 	return nil
 }
 
+// SendCoinsWithoutBlockHook calls sendCoins without calling the `BlockBeforeSend` hook.
+func (k BaseSendKeeper) SendCoinsWithoutBlockHook(ctx sdk.Context, fromAddr sdk.AccAddress, toAddr sdk.AccAddress, amt sdk.Coins) error {
+	return k.sendCoins(ctx, fromAddr, toAddr, amt)
+}
+
 // SendCoins transfers amt coins from a sending account to a receiving account.
 // An error is returned upon failure.
 func (k BaseSendKeeper) SendCoins(ctx sdk.Context, fromAddr sdk.AccAddress, toAddr sdk.AccAddress, amt sdk.Coins) error {
+	err := k.BlockBeforeSend(ctx, fromAddr, toAddr, amt)
+	if err != nil {
+		return err
+	}
+
+	return k.sendCoins(ctx, fromAddr, toAddr, amt)
+}
+
+// sendCoins has the internal logic for sending coins.
+func (k BaseSendKeeper) sendCoins(ctx sdk.Context, fromAddr sdk.AccAddress, toAddr sdk.AccAddress, amt sdk.Coins) error {
+	k.TrackBeforeSend(ctx, fromAddr, toAddr, amt)
+
 	err := k.subUnlockedCoins(ctx, fromAddr, amt)
 	if err != nil {
 		return err
