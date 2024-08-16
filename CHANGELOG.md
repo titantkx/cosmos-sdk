@@ -37,6 +37,14 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## [Unreleased]
 
+### Features
+
+* (bank) [#4](https://github.com/titantkx/cosmos-sdk/pull/4) Add before send hooks for bank module.
+
+### Bug Fixes
+
+* (client/v2/autocli) [#4](https://github.com/titantkx/cosmos-sdk/pull/4) Remove NoOptDefaultValue.
+
 ## [v0.47.6-titan.6](https://github.com/titantkx/cosmos-sdk/releases/tag/v0.47.6-titan.6) - 2024-08-12
 
 ### Improvements
