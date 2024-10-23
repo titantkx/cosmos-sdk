@@ -37,6 +37,12 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## [Unreleased]
 
+## [v0.47.6-titan.8](https://github.com/titantkx/cosmos-sdk/releases/tag/v0.47.6-titan.8) - 2024-10-23
+
+### Bug Fixes
+
+* (version) Return replaced version string for `version` command.
+
 ## [v0.47.6-titan.7](https://github.com/titantkx/cosmos-sdk/releases/tag/v0.47.6-titan.7) - 2024-08-16 
 
 ### Features
