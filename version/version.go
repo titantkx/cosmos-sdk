@@ -44,7 +44,13 @@ func getSDKVersion() string {
 	var sdkVersion string
 	for _, dep := range deps.Deps {
 		if dep.Path == "github.com/cosmos/cosmos-sdk" {
+			// return replace version if it exists
+			if dep.Replace != nil {
+				sdkVersion = dep.Replace.Version
+				break
+			}
 			sdkVersion = dep.Version
+			break
 		}
 	}
 
