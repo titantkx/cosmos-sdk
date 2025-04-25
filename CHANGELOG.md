@@ -37,6 +37,100 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## [Unreleased]
 
+## [v0.47.17](https://github.com/cosmos/cosmos-sdk/releases/tag/v0.47.17) - 2025-02-12
+
+### Bug Fixes
+
+* [GHSA-47ww-ff84-4jrg](https://github.com/cosmos/cosmos-sdk/security/advisories/GHSA-47ww-ff84-4jrg) Fix x/group can halt when erroring in EndBlocker
+
+## [v0.47.16](https://github.com/cosmos/cosmos-sdk/releases/tag/v0.47.16) - 2025-02-20
+
+### Bug Fixes
+
+* [GHSA-x5vx-95h7-rv4p](https://github.com/cosmos/cosmos-sdk/security/advisories/GHSA-x5vx-95h7-rv4p) Fix Group module can halt chain when handling a malicious proposal
+
+## [v0.47.15](https://github.com/cosmos/cosmos-sdk/releases/tag/v0.47.15) - 2024-12-16
+
+### Bug Fixes
+
+* Bump `cosmossdk.io/math` to v1.4.
+* Fix [ABS-0043/ABS-0044](https://github.com/cosmos/cosmos-sdk/security/advisories/GHSA-8wcc-m6j2-qxvm) Limit recursion depth for unknown field detection and unpack any
+
+## [v0.47.14](https://github.com/cosmos/cosmos-sdk/releases/tag/v0.47.14) - 2024-09-20
+
+### Improvements
+
+* [#21295](https://github.com/cosmos/cosmos-sdk/pull/21295) Bump to gogoproto v1.7.0.
+* [#21295](https://github.com/cosmos/cosmos-sdk/pull/21295) Remove usage of `slices.SortFunc` due to API break in used versions.
+
+## [v0.47.13](https://github.com/cosmos/cosmos-sdk/releases/tag/v0.47.13) - 2024-07-15
+
+### Bug Fixes
+
+* (client) [#20912](https://github.com/cosmos/cosmos-sdk/pull/20912) Fix `math.LegacyDec` type deserialization in GRPC queries.
+* (x/group) [#20750](https://github.com/cosmos/cosmos-sdk/pull/20750) x/group shouldn't claim "orm" error codespace. This prevents any chain Cosmos SDK `v0.47` chain to use the ORM module.
+
+## [v0.47.12](https://github.com/cosmos/cosmos-sdk/releases/tag/v0.47.12) - 2024-06-10
+
+## Improvements
+
+* (x/authz,x/feegrant) [#20590](https://github.com/cosmos/cosmos-sdk/pull/20590) Provide updated keeper in depinject for authz and feegrant modules.
+
+### Bug Fixes
+
+* (baseapp) [#20144](https://github.com/cosmos/cosmos-sdk/pull/20144) Remove txs from mempool when AnteHandler fails in recheck.
+* (testutil/sims) [#20151](https://github.com/cosmos/cosmos-sdk/pull/20151) Set all signatures and don't overwrite the previous one in `GenSignedMockTx`.
+
+## [v0.47.11](https://github.com/cosmos/cosmos-sdk/releases/tag/v0.47.11) - 2024-04-22
+
+### Bug Fixes
+
+* (x/feegrant,x/authz) [#20114](https://github.com/cosmos/cosmos-sdk/pull/20114) Follow up of [GHSA-4j93-fm92-rp4m](https://github.com/cosmos/cosmos-sdk/security/advisories/GHSA-4j93-fm92-rp4m). The same issue was found in `x/feegrant` and `x/authz` modules.
+* (crypto) [#20027](https://github.com/cosmos/cosmos-sdk/pull/20027) secp256r1 keys now implement gogoproto's customtype interface.
+* (x/gov) [#19725](https://github.com/cosmos/cosmos-sdk/pull/19725) Fetch a failed proposal tally from `proposal.FinalTallyResult` in the gprc query.
+* (crypto) [#19691](https://github.com/cosmos/cosmos-sdk/pull/19746) Throw an error when signing with incorrect Ledger.
+
+## [v0.47.10](https://github.com/cosmos/cosmos-sdk/releases/tag/v0.47.10) - 2024-02-27
+
+### Bug Fixes
+
+* (x/staking) Fix a possible bypass of delagator slashing: [GHSA-86h5-xcpx-cfqc](https://github.com/cosmos/cosmos-sdk/security/advisories/GHSA-86h5-xcpx-cfqc)
+* (server) [#19573](https://github.com/cosmos/cosmos-sdk/pull/19573) Use proper `db_backend` type when reading chain-id
+
+## [v0.47.9](https://github.com/cosmos/cosmos-sdk/releases/tag/v0.47.9) - 2024-02-19
+
+### Bug Fixes
+
+* (x/auth/vesting) [GHSA-4j93-fm92-rp4m](#bug-fixes) Add `BlockedAddr` check in `CreatePeriodicVestingAccount`.
+* (baseapp) [#19177](https://github.com/cosmos/cosmos-sdk/pull/19177) Fix baseapp `DefaultProposalHandler` same-sender non-sequential sequence.
+
+## [v0.47.8](https://github.com/cosmos/cosmos-sdk/releases/tag/v0.47.8) - 2024-01-22
+
+### Improvements
+
+* (client/tx) [#18852](https://github.com/cosmos/cosmos-sdk/pull/18852) Add `WithFromName` to tx factory.
+* (types) [#18875](https://github.com/cosmos/cosmos-sdk/pull/18875) Speedup coins.Sort() if len(coins) <= 1.
+* (types) [#18888](https://github.com/cosmos/cosmos-sdk/pull/18888) Speedup DecCoin.Sort() if len(coins) <= 1
+* (testutil) [#18930](https://github.com/cosmos/cosmos-sdk/pull/18930) Add NodeURI for clientCtx.
+
+### Bug Fixes
+
+* [#19106](https://github.com/cosmos/cosmos-sdk/pull/19106) Allow empty public keys when setting signatures. Public keys aren't needed for every transaction. 
+* (server) [#18920](https://github.com/cosmos/cosmos-sdk/pull/18920) Fixes consensus failure while restart node with wrong `chainId` in genesis.
+
+## [v0.47.7](https://github.com/cosmos/cosmos-sdk/releases/tag/v0.47.7) - 2023-12-20
+
+### Improvements
+
+* (x/gov) [#18707](https://github.com/cosmos/cosmos-sdk/pull/18707) Improve genesis validation. 
+* (server) [#18478](https://github.com/cosmos/cosmos-sdk/pull/18478) Add command flag to disable colored logs.
+
+### Bug Fixes
+
+* (baseapp) [#18609](https://github.com/cosmos/cosmos-sdk/issues/18609) Fixed accounting in the block gas meter after BeginBlock and before DeliverTx, ensuring transaction processing always starts with the expected zeroed out block gas meter.
+* (server) [#18537](https://github.com/cosmos/cosmos-sdk/pull/18537) Fix panic when defining minimum gas config as `100stake;100uatom`. Use a `,` delimiter instead of `;`. Fixes the server config getter to use the correct delimiter.
+* (client/tx) [#18472](https://github.com/cosmos/cosmos-sdk/pull/18472) Utilizes the correct Pubkey when simulating a transaction.
+
 ## [v0.47.6-titan.8](https://github.com/titantkx/cosmos-sdk/releases/tag/v0.47.6-titan.8) - 2024-10-23
 
 ### Bug Fixes
@@ -95,6 +189,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ### Features
 
 * (client/tx) [#4864](https://github.com/cosmos/cosmos-sdk/issues/4864) Improve estimate gas.
+
 
 ## [v0.47.6](https://github.com/cosmos/cosmos-sdk/releases/tag/v0.47.6) - 2023-11-14
 
