@@ -252,6 +252,8 @@ type CacheKVStore interface {
 
 	// Writes operations to underlying KVStore
 	Write()
+
+	Copy() CacheKVStore
 }
 
 // CommitKVStore is an interface for MultiStore.

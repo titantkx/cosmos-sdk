@@ -37,6 +37,12 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## [Unreleased]
 
+### Features
+
+## [v0.47.17-titan.1](https://github.com/titantkx/cosmos-sdk/releases/tag/v0.47.17-titan.1) - 2025-05-12
+
+* (store/cache) Add deep copy method for cache store
+
 ## [v0.47.17-titan.0](https://github.com/titantkx/cosmos-sdk/releases/tag/v0.47.17-titan.0) - 2025-04-25
 
 ## [v0.47.17](https://github.com/cosmos/cosmos-sdk/releases/tag/v0.47.17) - 2025-02-12
