@@ -37,9 +37,15 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## [Unreleased]
 
-### Features
+## [v0.47.17-titan.2](https://github.com/titantkx/cosmos-sdk/releases/tag/v0.47.17-titan.2) - 2025-05-12
+
+### Bug Fixes
+
+* (store/cache) Add missing method in `CacheMultiStore` interface.
 
 ## [v0.47.17-titan.1](https://github.com/titantkx/cosmos-sdk/releases/tag/v0.47.17-titan.1) - 2025-05-12
+
+### Features
 
 * (store/cache) Add deep copy method for cache store
 
