@@ -65,6 +65,16 @@ func initAccountWithCoins(bankKeeper bankkeeper.Keeper, ctx sdk.Context, addr sd
 	}
 }
 
+func FundAccountWithCoins(bankKeeper bankkeeper.Keeper, ctx sdk.Context, addr sdk.AccAddress, coins sdk.Coins) {
+	if err := bankKeeper.MintCoins(ctx, minttypes.ModuleName, coins); err != nil {
+		panic(err)
+	}
+
+	if err := bankKeeper.SendCoinsFromModuleToAccount(ctx, minttypes.ModuleName, addr, coins); err != nil {
+		panic(err)
+	}
+}
+
 // CreateIncrementalAccounts is a strategy used by addTestAddrs() in order to generated addresses in ascending order.
 func CreateIncrementalAccounts(accNum int) []sdk.AccAddress {
 	var addresses []sdk.AccAddress

@@ -1,6 +1,7 @@
 package gov_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -399,3 +400,122 @@ func createValidators(t *testing.T, stakingMsgSvr stakingtypes.MsgServer, ctx sd
 		require.NotNil(t, res)
 	}
 }
+
+func TestEndBlockerDosDeposits(t *testing.T) {
+	start := time.Now()
+
+	suite := createTestSuite(t)
+	app := suite.App
+	ctx := app.BaseApp.NewContext(false, tmproto.Header{})
+	n := 100000
+
+	params := suite.GovKeeper.GetParams(ctx)
+
+	_ = params
+
+	addrs := simtestutil.AddTestAddrs(suite.BankKeeper, suite.StakingKeeper, ctx, n, valTokens)
+	SortAddresses(addrs)
+
+	header := tmproto.Header{Height: app.LastBlockHeight() + 1}
+	app.BeginBlock(abci.RequestBeginBlock{Header: header})
+
+	msg := banktypes.NewMsgSend(authtypes.NewModuleAddress(types.ModuleName), addrs[0], sdk.NewCoins(sdk.NewCoin(sdk.DefaultBondDenom, sdk.NewInt(100000))))
+	proposal, err := suite.GovKeeper.SubmitProposal(ctx, []sdk.Msg{msg}, "", "Bank Msg Send", "send message", addrs[0])
+	require.NoError(t, err)
+
+	token1 := sdk.NewCoin("token1", sdk.NewInt(100000000))
+	token2 := sdk.NewCoin("token2", sdk.NewInt(100000000))
+
+	govMsgSvr := keeper.NewMsgServerImpl(suite.GovKeeper)
+	for i := 0; i < n; i++ {
+		simtestutil.FundAccountWithCoins(suite.BankKeeper, ctx, addrs[i], sdk.Coins{token1, token2})
+
+		proposalCoins := sdk.NewCoins(sdk.NewInt64Coin("token1", 1), sdk.NewInt64Coin("token2", 1))
+		newDepositMsg := v1.NewMsgDeposit(addrs[i], proposal.Id, proposalCoins)
+		// handleAndCheck(t, gov.NewHandler(app.GovKeeper), ctx, newDepositMsg)
+		res, err := govMsgSvr.Deposit(sdk.WrapSDKContext(ctx), newDepositMsg)
+		require.NoError(t, err)
+		require.NotNil(t, res)
+	}
+	// deposit bond denom to pass min deposit
+	proposalCoins := sdk.NewCoins(sdk.NewCoin(sdk.DefaultBondDenom, suite.StakingKeeper.TokensFromConsensusPower(ctx, 10)))
+	newDepositMsg := v1.NewMsgDeposit(addrs[0], proposal.Id, proposalCoins)
+	res, err := govMsgSvr.Deposit(sdk.WrapSDKContext(ctx), newDepositMsg)
+	require.NoError(t, err)
+	require.NotNil(t, res)
+
+	elapsed := time.Since(start)
+	fmt.Printf("Deposit took %s\n", elapsed)
+
+	// move to end of deposit period
+	newHeader := ctx.BlockHeader()
+	newHeader.Time = ctx.BlockHeader().Time.Add(*suite.GovKeeper.GetParams(ctx).MaxDepositPeriod + 1)
+	ctx = ctx.WithBlockHeader(newHeader)
+
+	// vote yes
+	err = suite.GovKeeper.AddVote(ctx, proposal.Id, addrs[0], v1.NewNonSplitVoteOption(v1.OptionYes), "")
+	require.NoError(t, err)
+
+	// move to end of voting period
+	newHeader = ctx.BlockHeader()
+	newHeader.Time = ctx.BlockHeader().Time.Add(*suite.GovKeeper.GetParams(ctx).VotingPeriod)
+	ctx = ctx.WithBlockHeader(newHeader)
+
+	start = time.Now()
+
+	gov.EndBlocker(ctx, suite.GovKeeper)
+
+	elapsed = time.Since(start)
+	fmt.Printf("Endblocker took %s\n", elapsed)
+}
+
+// func TestEndBlocker(t *testing.T) {
+// 	start := time.Now()
+// 	app := simapp.Setup(false)
+// 	n := 100000
+// 	ctx := app.BaseApp.NewContext(false, tmproto.Header{})
+// 	addrs := simapp.AddTestAddrs(app, ctx, n, valTokens)
+
+// 	SortAddresses(addrs)
+
+// 	header := tmproto.Header{Height: app.LastBlockHeight() + 1}
+// 	app.BeginBlock(abci.RequestBeginBlock{Header: header})
+
+// 	ctx = ctx.WithValue(contextKeyBadProposal, true)
+// 	proposal, err := app.GovKeeper.SubmitProposal(ctx, TestProposal)
+// 	require.NoError(t, err)
+
+// 	proposalCoins := sdk.Coins{}
+// 	token1 := sdk.NewCoin("token1", sdk.NewInt(100000000))
+// 	token2 := sdk.NewCoin("token2", sdk.NewInt(100000000))
+// 	for i := 0; i < n; i++ {
+// 		err = simapp.FundAccount(app.BankKeeper, ctx, addrs[i], sdk.Coins{token1, token2})
+// 		require.NoError(t, err)
+
+// 		proposalCoins := sdk.NewCoins(sdk.NewInt64Coin("token1", 1), sdk.NewInt64Coin("token2", 1))
+// 		newDepositMsg := types.NewMsgDeposit(addrs[i], proposal.ProposalId, proposalCoins)
+// 		handleAndCheck(t, gov.NewHandler(app.GovKeeper), ctx, newDepositMsg)
+// 	}
+
+// 	proposalCoins = sdk.NewCoins(sdk.NewCoin(sdk.DefaultBondDenom, app.StakingKeeper.TokensFromConsensusPower(ctx, 10)))
+// 	handleAndCheck(t, gov.NewHandler(app.GovKeeper), ctx, types.NewMsgDeposit(addrs[0], proposal.ProposalId, proposalCoins))
+// 	elapsed := time.Since(start)
+
+// newHeader := ctx.BlockHeader()
+// newHeader.Time = ctx.BlockHeader().Time.Add(app.GovKeeper.GetDepositParams(ctx).MaxDepositPeriod).Add(1)
+// ctx = ctx.WithBlockHeader(newHeader)
+// 	app.GovKeeper.AddVote(ctx, proposal.ProposalId, addrs[0], types.NewNonSplitVoteOption(types.OptionYes))
+
+// 	newHeader = ctx.BlockHeader()
+// 	newHeader.Time = ctx.BlockHeader().Time.Add(app.GovKeeper.GetDepositParams(ctx).MaxDepositPeriod).Add(app.GovKeeper.GetVotingParams(ctx).VotingPeriod)
+// 	ctx = ctx.WithBlockHeader(newHeader)
+
+// 	fmt.Printf("Deposit took %s\n", elapsed)
+
+// 	start = time.Now()
+
+// 	gov.EndBlocker(ctx, app.GovKeeper)
+
+// 	elapsed = time.Since(start)
+// 	fmt.Printf("Endblocker took %s\n", elapsed)
+// }
