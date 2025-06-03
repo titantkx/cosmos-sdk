@@ -37,6 +37,10 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## [Unreleased]
 
+### Miscellaneous
+
+* (x/gov) Add Testcase `TestEndBlockerDosDeposits`
+
 ## [v0.47.17-titan.2](https://github.com/titantkx/cosmos-sdk/releases/tag/v0.47.17-titan.2) - 2025-05-12
 
 ### Bug Fixes
